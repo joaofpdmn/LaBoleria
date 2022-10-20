@@ -1,5 +1,5 @@
 import connection from "../database/db.js";
-import { cakesImageSchema, cakesSchema } from "../schemas/cakesSchema.js";
+import { cakesSchema } from "../schemas/cakesSchema.js";
 import { isValidUrl } from "../schemas/urlSchema.js";
 
 async function cakeAuth(req, res, next) {
