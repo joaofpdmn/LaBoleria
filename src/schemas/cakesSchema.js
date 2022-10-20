@@ -6,8 +6,4 @@ const cakesSchema = joi.object({
     description: joi.string()
 });
 
-const cakesImageSchema = joi.object({
-    image: joi.string().required()
-})
-
-export { cakesSchema, cakesImageSchema };
+export { cakesSchema };
