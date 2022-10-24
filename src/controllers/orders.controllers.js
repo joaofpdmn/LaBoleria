@@ -1,4 +1,5 @@
 import connection from "../database/db.js";
+import dayjs from 'dayjs';
 
 async function createOrder(req, res) {
     const clientId = res.locals.clientExists
@@ -45,10 +46,73 @@ async function getOrders(req, res) {
     } catch (error) {
         return res.status(500).send(error);
     }
+}
 
+async function getOrdersById(req, res){
+    const { id } = req.params;
+    try {
+        const order = (await connection.query(`SELECT * FROM orders WHERE id = $1;`, [id])).rows;
+        if(!order.length){
+            return res.sendStatus(404);
+        }
+        const clientOrder = (await connection.query(`SELECT * FROM clients WHERE id = $1;`, [order[0].clientId])).rows;
+        const cakeOrder = (await connection.query(`SELECT * FROM cakes WHERE id = $1;`, [order[0].cakeId])).rows;
+        const result = {
+            client: {
+                id: clientOrder[0].id,
+                name: clientOrder[0].name,
+                address: clientOrder[0].address,
+                phone: clientOrder[0].phone
+            },
+            cake: {
+                id: cakeOrder[0].id,
+                name: cakeOrder[0].name,
+                price: cakeOrder[0].price,
+                image: cakeOrder[0].image,
+                description: cakeOrder[0].description
+            },
+            orderId: order[0].id,
+            createdAt: order[0].createdAt,
+            quantity: order[0].quantity,
+            totalPrice: order[0].totalPrice
+        }
+        return res.status(200).send(result);
+    } catch (error) {
+        return res.sendStatus(500);
+    }
+}
+
+async function getOrdersByClientId(req, res){
+    const { id } = req.params;
+    try {
+        const allOrders = (await connection.query(`SELECT * FROM orders WHERE "clientId" = $1;`, [id])).rows;
+        if(!allOrders.length){
+            return res.sendStatus(404);
+        }
+        const cakeNames = [];
+        await Promise.all(allOrders.map(async (order) => {
+            var cakeName = (await connection.query(`SELECT * FROM cakes WHERE id = $1;`, [order.cakeId])).rows[0];
+            cakeNames.push(cakeName.name);
+        }))
+        const result = [];
+        allOrders.forEach( (order, index) => {
+            result.push({
+                orderId: order.id,
+                quantity: order.quantity,
+                createdAt: order.createdAt,
+                totalPrice: order.totalPrice,
+                cakeName: cakeNames[index]
+            })
+        })
+        return res.status(200).send(result);
+    } catch (error) {
+        return res.sendStatus(500);        
+    }
 }
 
 export {
     createOrder,
-    getOrders
+    getOrders,
+    getOrdersById,
+    getOrdersByClientId
 };
