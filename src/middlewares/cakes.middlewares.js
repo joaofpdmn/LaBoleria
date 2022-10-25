@@ -8,14 +8,13 @@ async function cakeAuth(req, res, next) {
     if (validation.error) {
         return res.sendStatus(400);
     }
-    
     const valid = isValidUrl(image);
     if (!valid) {
         return res.sendStatus(422);
     }
     try {
         const exist = await connection.query(`SELECT * FROM cakes WHERE name = $1`, [name]);
-        if (exist.rows > 0) {
+        if (exist.rows.length > 0) {
             return res.sendStatus(409);
         }
     } catch (error) {

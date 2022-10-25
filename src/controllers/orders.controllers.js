@@ -19,6 +19,9 @@ async function getOrders(req, res) {
     try {
         if (date) {
             const orderswithDate = (await connection.query(`SELECT * FROM orders WHERE "createdAt"::date = $1;`, [date])).rows;
+            if (!orderswithDate.length) {
+                return res.sendStatus(404);
+            }
             const ordersResponse = [];
             await Promise.all(orderswithDate.map(async (order) => {
                 var client = (await connection.query(`SELECT * FROM clients WHERE id = $1;`, [order.clientId])).rows[0];
@@ -46,6 +49,9 @@ async function getOrders(req, res) {
             return res.status(200).send(ordersResponse);
         }
         const orders = (await connection.query(`SELECT * FROM orders`)).rows;
+        if (!orders.length) {
+            return res.sendStatus(404);
+        }
         const ordersResponse = [];
         await Promise.all(orders.map(async (order) => {
             var client = (await connection.query(`SELECT * FROM clients WHERE id = $1;`, [order.clientId])).rows[0];
