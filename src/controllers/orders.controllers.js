@@ -6,9 +6,10 @@ async function createOrder(req, res) {
     const cakeId = res.locals.cakeExists
     const quantity = res.locals.quantity;
     const totalPrice = res.locals.totalPrice;
+    const createdAt = dayjs().format('DD-MM-YYYY HH:mm');
     try {
-        await connection.query(`INSERT INTO orders ("clientId", "cakeId", quantity, "totalPrice") VALUES ($1, $2, $3, $4);`,
-            [clientId, cakeId, quantity, totalPrice]);
+        await connection.query(`INSERT INTO orders ("clientId", "cakeId", quantity, "totalPrice", "createdAt") VALUES ($1, $2, $3, $4, $5);`,
+            [clientId, cakeId, quantity, totalPrice, createdAt]);
         return res.sendStatus(201);
     } catch (error) {
         return res.sendStatus(500);
@@ -16,7 +17,36 @@ async function createOrder(req, res) {
 }
 
 async function getOrders(req, res) {
+    const { date } = req.query;
     try {
+        if (date) {
+            const orderswithDate = (await connection.query(`SELECT * FROM orders WHERE "createdAt"::date = $1;`, [date])).rows;
+            const ordersResponse = [];
+            await Promise.all(orderswithDate.map(async (order) => {
+                var client = (await connection.query(`SELECT * FROM clients WHERE id = $1;`, [order.clientId])).rows[0];
+                var cake = (await connection.query(`SELECT * FROM cakes WHERE id = $1;`, [order.cakeId])).rows[0];
+                ordersResponse.push({
+                    client: {
+                        id: client.id,
+                        name: client.name,
+                        address: client.address,
+                        phone: client.phone
+                    },
+                    cake: {
+                        id: cake.id,
+                        name: cake.name,
+                        price: cake.price,
+                        description: cake.description,
+                        image: cake.image
+                    },
+                    orderId: order.id,
+                    createdAt: order.createdAt,
+                    quantity: order.quantity,
+                    totalPrice: order.totalPrice
+                });
+            }));
+            return res.status(200).send(ordersResponse);
+        }
         const orders = (await connection.query(`SELECT * FROM orders`)).rows;
         const ordersResponse = [];
         await Promise.all(orders.map(async (order) => {
@@ -44,15 +74,15 @@ async function getOrders(req, res) {
         }));
         return res.status(200).send(ordersResponse);
     } catch (error) {
-        return res.status(500).send(error);
+        return res.status(500).send(error.message);
     }
 }
 
-async function getOrdersById(req, res){
+async function getOrdersById(req, res) {
     const { id } = req.params;
     try {
         const order = (await connection.query(`SELECT * FROM orders WHERE id = $1;`, [id])).rows;
-        if(!order.length){
+        if (!order.length) {
             return res.sendStatus(404);
         }
         const clientOrder = (await connection.query(`SELECT * FROM clients WHERE id = $1;`, [order[0].clientId])).rows;
@@ -82,11 +112,11 @@ async function getOrdersById(req, res){
     }
 }
 
-async function getOrdersByClientId(req, res){
+async function getOrdersByClientId(req, res) {
     const { id } = req.params;
     try {
         const allOrders = (await connection.query(`SELECT * FROM orders WHERE "clientId" = $1;`, [id])).rows;
-        if(!allOrders.length){
+        if (!allOrders.length) {
             return res.sendStatus(404);
         }
         const cakeNames = [];
@@ -95,7 +125,7 @@ async function getOrdersByClientId(req, res){
             cakeNames.push(cakeName.name);
         }))
         const result = [];
-        allOrders.forEach( (order, index) => {
+        allOrders.forEach((order, index) => {
             result.push({
                 orderId: order.id,
                 quantity: order.quantity,
@@ -106,7 +136,7 @@ async function getOrdersByClientId(req, res){
         })
         return res.status(200).send(result);
     } catch (error) {
-        return res.sendStatus(500);        
+        return res.sendStatus(500);
     }
 }
 
